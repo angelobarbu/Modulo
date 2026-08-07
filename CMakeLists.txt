@@ -35,5 +35,5 @@ enable_testing()
 # Subdirectories are appended as the increments introduce them:
 # add_subdirectory(libs/core)      # Increment 1, Step 5
 # add_subdirectory(libs/api)       # Increment 1, Step 5
-# add_subdirectory(server)         # Increment 1, Steps 4-5
+add_subdirectory(server)
 # add_subdirectory(client)         # Increment 1, Step 5
