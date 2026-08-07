@@ -81,6 +81,29 @@ scripts/db-down.sh --wipe     # stop AND delete all data (asks for confirmation)
 `modulo_test` is created by [`docker/initdb/01_create_test_db.sql`](docker/initdb/01_create_test_db.sql)
 on the first initialization of an empty volume.
 
+### Migrations
+
+Schema changes are plain SQL files in [`db/migrations/`](db/migrations/), named
+`NNNN_name.sql` and applied in version order by the `modulo_migrate` binary
+(module `modulo_server_db`, wrapped by a script):
+
+```sh
+scripts/migrate.sh            # applies pending migrations to $MODULO_DB_URL
+```
+
+The runner tracks state in a `schema_migrations` table (version, name, content
+checksum, timestamp) and enforces these rules:
+
+- each migration runs inside **one transaction** — a failure rolls back cleanly;
+- already-applied, unchanged files are **skipped** (re-running is a no-op);
+- migration files are **append-only**: editing an applied file changes its
+  checksum and the runner refuses to continue;
+- a stray non-migration file in the directory is an error (dotfiles are tolerated).
+
+The database URL resolves in order: existing `MODULO_DB_URL` in the environment →
+`.env` at the repo root → the dev-database default. `modulo_migrate --help` shows
+the underlying CLI (`--url`, `--dir`).
+
 ## Testing
 
 Tests are registered with CTest under the labels `unit`, `integration`, and `ui`:
@@ -112,8 +135,12 @@ scripts/format.sh --check     # verify only (CI mode)
 
 ```
 cmake/            CMake toolkit: all build logic as modulo_* functions + vendored CPM.cmake
+db/migrations/    append-only SQL schema migrations (NNNN_name.sql)
 docker/           docker-compose.yml (Postgres 16 on :5433) + one-time initdb scripts
-scripts/          db-up.sh, db-down.sh, format.sh
+scripts/          db-up.sh, db-down.sh, migrate.sh, format.sh
+server/           backend: per-module static libraries + executables
+  modules/db/     modulo_server_db — migration engine (connection pool arrives in Increment 2)
+  migrate/        modulo_migrate — CLI migration runner
 CMakeLists.txt    thin root: options, toolkit includes, dependency resolution
 CMakePresets.json configure/build/test presets (dev, dev-asan, dev-tidy, release)
 .env.example      environment template (DB URLs, HTTP port, data dir)
@@ -127,3 +154,4 @@ CMakePresets.json configure/build/test presets (dev, dev-asan, dev-tidy, release
 | 1.1 — Style & hygiene | `.clang-format`, `.clang-tidy`, `.env.example`, `.gitignore` extension, `scripts/format.sh` |
 | 1.2 — CMake superstructure | Function-based `cmake/` toolkit, vendored CPM v0.42.0, thin root `CMakeLists.txt`, presets |
 | 1.3 — Dev database | Dockerized Postgres 16 (`:5433`, named volume, healthcheck), initdb for `modulo_test`, `db-up`/`db-down` scripts |
+| 1.4 — Migrations | `modulo_server_db` module (first server static lib) with transactional, checksum-verified migration engine; `modulo_migrate` CLI; `0001_init.sql`; `scripts/migrate.sh` |
