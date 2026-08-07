@@ -54,3 +54,10 @@ compile_commands.json
 *creator.user*
 
 *_qmlcache.qrc
+
+# Modulo
+build*/
+var/
+.env
+.cache/
+.DS_Store
