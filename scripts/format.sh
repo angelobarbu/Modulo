@@ -22,8 +22,14 @@ if [[ "${1:-}" == "--check" ]]; then
 fi
 
 # First-party source directories only — never third-party or generated code.
-find "${REPO_ROOT}/libs" "${REPO_ROOT}/server" "${REPO_ROOT}/client" \
-    -type f \( -name '*.cpp' -o -name '*.h' \) -print0 2>/dev/null |
-    xargs -0 -r "${CLANG_FORMAT}" --style=file "${MODE_ARGS[@]}"
+SEARCH_DIRS=()
+for dir in libs server client; do
+    [[ -d "${REPO_ROOT}/${dir}" ]] && SEARCH_DIRS+=("${REPO_ROOT}/${dir}")
+done
+if [[ ${#SEARCH_DIRS[@]} -gt 0 ]]; then
+    find "${SEARCH_DIRS[@]}" \
+        -type f \( -name '*.cpp' -o -name '*.h' \) -print0 |
+        xargs -0 -r "${CLANG_FORMAT}" --style=file "${MODE_ARGS[@]}"
+fi
 
 echo "format.sh: done"
