@@ -1,0 +1,38 @@
+# Modulo static-analysis rules.
+# Run via the `dev-tidy` CMake preset (clang-tidy from /opt/homebrew/opt/llvm/bin).
+#
+# Check families: bugprone, performance, modernize, readability.
+# Suppressions (kept deliberately short):
+#   - bugprone-easily-swappable-parameters: too noisy for small DTO/ctor signatures.
+#   - modernize-use-trailing-return-type: we use classic return-type style.
+#   - readability-identifier-length: short names (id, tx, db) are idiomatic here.
+#   - readability-magic-numbers: config defaults and test literals would drown the signal.
+---
+Checks: >
+  bugprone-*,
+  performance-*,
+  modernize-*,
+  readability-*,
+  -bugprone-easily-swappable-parameters,
+  -modernize-use-trailing-return-type,
+  -readability-identifier-length,
+  -readability-magic-numbers
+
+WarningsAsErrors: ''
+HeaderFilterRegex: '.*/(include|src)/modulo/.*|.*/(libs|server|client)/.*\.h$'
+FormatStyle: file
+
+CheckOptions:
+  # Naming: CamelCase types, camelBack functions/variables, snake_case namespaces,
+  # trailing underscore for private members, UPPER_CASE macros.
+  readability-identifier-naming.NamespaceCase: lower_case
+  readability-identifier-naming.ClassCase: CamelCase
+  readability-identifier-naming.StructCase: CamelCase
+  readability-identifier-naming.EnumCase: CamelCase
+  readability-identifier-naming.EnumConstantCase: CamelCase
+  readability-identifier-naming.FunctionCase: camelBack
+  readability-identifier-naming.VariableCase: camelBack
+  readability-identifier-naming.ParameterCase: camelBack
+  readability-identifier-naming.PrivateMemberSuffix: '_'
+  readability-identifier-naming.MacroDefinitionCase: UPPER_CASE
+  readability-function-cognitive-complexity.IgnoreMacros: true
