@@ -1,17 +1,17 @@
-# Dependencies.cmake — single home for every third-party dependency.
+# Dependencies.cmake — Third-party dependencies.
 #
-# `modulo_find_dependencies()` resolves, in one place:
+# `modulo_find_dependencies()` resolves:
 #   - Homebrew binary libs: Qt 6.8+, libpqxx, libsodium
-#   - CPM-pinned source libs: Catch2 v3, nlohmann-json
+#   - CPM-pinned source libs: Catch2 v3
 #
-# A macro (not a function) so find_package results land in the caller's
-# directory scope. Called exactly once, from the root CMakeLists.txt.
+# A macro so find_package results land in the caller's
+# directory scope. Called from the root CMakeLists.txt.
 
 include_guard(GLOBAL)
 
 # Source dependencies are cached outside the build tree so wiping build/
 # does not re-download them (.cache/ is gitignored). Must be set BEFORE
-# include(CPM): CPM initializes this cache variable itself on include, and
+# include(CPM): CPM initializes this cache variable itself on include and
 # a later set(... CACHE ...) would not override the existing entry.
 set(CPM_SOURCE_CACHE
     "${CMAKE_SOURCE_DIR}/.cache/cpm"
@@ -55,6 +55,4 @@ macro(modulo_find_dependencies)
     if(MODULO_BUILD_TESTS)
         cpmaddpackage("gh:catchorg/Catch2@3.8.1")
     endif()
-
-    cpmaddpackage("gh:nlohmann/json@3.11.3")
 endmacro()

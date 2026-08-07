@@ -10,7 +10,16 @@ the API. The backend is designed to be containerized later, and future web/mobil
 can target the same API.
 
 **Stack:** C++23 · Qt 6.8 · QML · PostgreSQL 16 · CMake ≥ 3.28 · libpqxx · libsodium ·
-Catch2 v3 · nlohmann-json
+Catch2 v3
+
+The project deliberately maximizes Qt usage: QJson wire format, `Q_GADGET` DTOs readable
+from QML, `QString` + `.arg()` as the project-wide string idiom, Qt integer typedefs
+(`quint16`, …) in Qt-facing code, `qInfo()`/`qCritical()` logging in applications
+(`QLoggingCategory` planned with the auth increment), and Qt networking/HTTP/UI
+throughout. The C++23 standard library is used only where Qt has no equivalent
+(`std::expected`-based `Result<T>`, `std::filesystem`). The deliberately Qt-free zone is
+`server/modules/db` + `modulo_migrate` (pure libpqxx; stdout is the CLI's interface),
+keeping the future container's migration entrypoint minimal.
 
 > Developed incrementally, one reviewed step at a time. This README grows with each step —
 > see [Repository layout](#repository-layout) for what exists today.
@@ -29,6 +38,15 @@ brew install cmake ninja llvm libpqxx libsodium qt
 - **Docker Desktop** must be running for the development database.
 - The local Homebrew PostgreSQL (if any) can keep running — the dockerized database uses
   port **5433** precisely to avoid clashing with a local server on 5432.
+
+Two quirks of this machine are compensated for in the build (no action needed):
+
+- The newest macOS SDK no longer ships the legacy `AGL` framework, but Qt's OpenGL CMake
+  wrapper unconditionally links it — the `dev` presets pin `WrapOpenGL_AGL` to the stub in
+  the older SDK (Homebrew's Qt itself links AGL at runtime, so this adds nothing new).
+- A second Qt (`qtbase`) shadows the shared Homebrew plugin path with version-incompatible
+  plugins; the build generates a `qt.conf` beside every executable pinning plugin/QML
+  resolution to the Qt actually linked.
 
 Copy the environment template and adjust if needed:
 
@@ -60,6 +78,21 @@ All build logic lives as `modulo_*` functions in [`cmake/`](cmake/) —
 so every `CMakeLists.txt` stays a short declarative call. Each server-side module is its
 own static library with public headers in `include/modulo/...` and implementation in
 `src/` (header files use the `.h` extension).
+
+## Running the stack
+
+```sh
+scripts/db-up.sh                      # 1. database (not needed by health yet)
+./build/dev/server/app/modulo_server  # 2. REST API on http://127.0.0.1:8080
+./build/dev/client/modulo_client      # 3. desktop client (separate terminal)
+```
+
+The server exposes `GET /api/v1/health` → `{"status":"ok","version":"0.1.0"}`; any
+unknown route returns the uniform error envelope
+`{"error":{"code":"not_found","message":"..."}}` with the matching HTTP status. The
+client window (dark theme placeholder) polls health every 3 s and shows a live
+green/red status indicator. `MODULO_HTTP_PORT` and `MODULO_API_URL` override the
+server port and the client's target, respectively.
 
 ## Development database
 
@@ -136,11 +169,18 @@ scripts/format.sh --check     # verify only (CI mode)
 ```
 cmake/            CMake toolkit: all build logic as modulo_* functions + vendored CPM.cmake
 db/migrations/    append-only SQL schema migrations (NNNN_name.sql)
+docs/             high_level_design.md (Mermaid architecture diagrams) + plan.md (living plan)
 docker/           docker-compose.yml (Postgres 16 on :5433) + one-time initdb scripts
+libs/core/        modulo_core — Qt-free foundations (version, Result<T> on std::expected)
+libs/api/         modulo_api — Q_GADGET DTOs + validating QJson mappings shared by server and client
 scripts/          db-up.sh, db-down.sh, migrate.sh, format.sh
 server/           backend: per-module static libraries + executables
+  modules/config/ modulo_server_config — env-based process configuration
   modules/db/     modulo_server_db — migration engine (connection pool arrives in Increment 2)
+  modules/http/   modulo_server_http — QHttpServer wrapper, routes, error envelope
+  app/            modulo_server — REST API server executable
   migrate/        modulo_migrate — CLI migration runner
+client/           modulo_client — QML desktop app (ApiClient + dark-theme shell)
 CMakeLists.txt    thin root: options, toolkit includes, dependency resolution
 CMakePresets.json configure/build/test presets (dev, dev-asan, dev-tidy, release)
 .env.example      environment template (DB URLs, HTTP port, data dir)
@@ -155,3 +195,5 @@ CMakePresets.json configure/build/test presets (dev, dev-asan, dev-tidy, release
 | 1.2 — CMake superstructure | Function-based `cmake/` toolkit, vendored CPM v0.42.0, thin root `CMakeLists.txt`, presets |
 | 1.3 — Dev database | Dockerized Postgres 16 (`:5433`, named volume, healthcheck), initdb for `modulo_test`, `db-up`/`db-down` scripts |
 | 1.4 — Migrations | `modulo_server_db` module (first server static lib) with transactional, checksum-verified migration engine; `modulo_migrate` CLI; `0001_init.sql`; `scripts/migrate.sh` |
+| 1.5 — Stubs across the stack | `modulo_core` (version, `Result<T>`), `modulo_api` (Health/Error DTOs), `config` + `http` server modules, `modulo_server` serving `/api/v1/health`, QML client with live status; toolkit grew `modulo_add_qml_app`, version injection, qt.conf generation, AGL workaround |
+| 1.5b — Qt-wide uniformity | Decision: maximize Qt uniformity. DTOs became `Q_GADGET`s with validating QJson mappings (`api::json::require*` — no silent defaults); nlohmann-json dependency removed. `QString` project-wide (incl. `core::Error`/`version()`), `.arg()` over `std::format` in Qt code, `quint16` in Qt-facing types, `qInfo`/`qCritical` in apps; Qt-free zone narrowed to `modules/db` + `modulo_migrate` |

@@ -1,11 +1,11 @@
 # CompilerWarnings.cmake — project-wide warning configuration.
 #
-# Defines the `modulo_warnings` INTERFACE target carrying the warning flags
-# shared by every first-party target, and `modulo_enable_warnings(<target>)`
-# to attach them. Third-party code fetched via CPM is never touched.
+# Defines the `modulo_warnings` INTERFACE target carrying
+# the warning flags shared by every first-party target
+# and `modulo_enable_warnings(<target>) to attach them.
 #
 # The flag set is controlled by the MODULO_WARNINGS_AS_ERRORS option
-# (declared in the root CMakeLists.txt, enabled by the `dev` preset).
+# (declared in the root CMakeLists.txt enabled by the `dev` preset).
 
 include_guard(GLOBAL)
 

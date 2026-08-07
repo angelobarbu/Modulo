@@ -32,8 +32,7 @@ qt_standard_project_setup(REQUIRES 6.8)
 enable_testing()
 
 # --- Project targets ---------------------------------------------------------
-# Subdirectories are appended as the increments introduce them:
-# add_subdirectory(libs/core)      # Increment 1, Step 5
-# add_subdirectory(libs/api)       # Increment 1, Step 5
+add_subdirectory(libs/core)
+add_subdirectory(libs/api)
 add_subdirectory(server)
-# add_subdirectory(client)         # Increment 1, Step 5
+add_subdirectory(client)
