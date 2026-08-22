@@ -40,7 +40,7 @@ IncludeCategories:
     Priority: 2
   - Regex: '^<Q'
     Priority: 3
-  - Regex: '^<(catch2|nlohmann|pqxx|sodium)'
+  - Regex: '^<(catch2|pqxx|sodium)'
     Priority: 4
   - Regex: '^<[a-z_0-9]+(\.h)?>$'
     Priority: 5

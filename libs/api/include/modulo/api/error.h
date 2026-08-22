@@ -19,8 +19,8 @@ public:
     QString code;
     QString message;
 
-    [[nodiscard]] QJsonObject toJson() const;
-    [[nodiscard]] static core::Result<ErrorResponse> fromJson(const QJsonObject& json);
+    QJsonObject toJson() const;
+    static core::Result<ErrorResponse> fromJson(const QJsonObject& json);
 };
 
 } // namespace modulo::api

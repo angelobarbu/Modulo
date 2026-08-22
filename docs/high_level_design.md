@@ -1,4 +1,4 @@
-# Modulo — High-Level Design (end of Increment 1, Step 5)
+# Modulo — High-Level Design
 
 ## 1. Component & deployment view
 
@@ -105,7 +105,7 @@ sequenceDiagram
     S->>D: HealthResponse{ok, 0.1.0}.toJson()
     S-->>A: 200 {"status":"ok","version":"0.1.0"}
     A->>D: HealthResponse::fromJson (validating)
-    D-->>A: Result&lt;HealthResponse&gt;
+    D-->>A: Result of HealthResponse or Error
     A-->>Q: serverReachable / serverStatus properties
     Note over Q: green pulsing dot · "server ok (v0.1.0)"
 ```
@@ -135,9 +135,3 @@ sequenceDiagram
     end
     M-->>U: "N applied, M skipped" (exit code)
 ```
-
-**Conventions locked in so far:** full-Qt uniformity (QJson wire format, `QString`/`.arg()`,
-`quint16`, `qInfo`/`qCritical`; `QLoggingCategory` from Increment 2) with `std::expected`/
-`std::filesystem` where Qt has no equivalent; the only Qt-free zone is `modules/db` +
-`modulo_migrate`; uniform error envelope `{"error":{"code","message"}}`; loopback-only
-binding; append-only migrations; one step per prompt, README updated every step.

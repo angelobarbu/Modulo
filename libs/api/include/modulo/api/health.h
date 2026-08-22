@@ -22,8 +22,8 @@ public:
     QString status;  ///< "ok" when the server is serving requests.
     QString version; ///< Server semantic version.
 
-    [[nodiscard]] QJsonObject toJson() const;
-    [[nodiscard]] static core::Result<HealthResponse> fromJson(const QJsonObject& json);
+    QJsonObject toJson() const;
+    static core::Result<HealthResponse> fromJson(const QJsonObject& json);
 };
 
 } // namespace modulo::api

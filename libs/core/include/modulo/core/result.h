@@ -18,7 +18,7 @@ struct Error {
     QString message;
 };
 
-/// Project-wide result type: a value of T, or an Error.
+/// Project-wide result type: a value of T or an Error.
 ///
 /// Used instead of exceptions on expected failure paths (bad input,
 /// unavailable resources). Exceptions remain for genuinely exceptional,
@@ -31,7 +31,7 @@ using VoidResult = std::expected<void, Error>;
 
 /// Convenience factory: `return makeError("config.invalid_port", "...");`
 /// converts implicitly to any Result<T>.
-[[nodiscard]] inline std::unexpected<Error> makeError(QString code, QString message) {
+inline std::unexpected<Error> makeError(QString code, QString message) {
     return std::unexpected{Error{std::move(code), std::move(message)}};
 }
 

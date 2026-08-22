@@ -1,8 +1,7 @@
 # Modulo — personal investment tracker.
 #
-# This file stays deliberately thin: options, toolkit includes, dependency
-# resolution, and subdirectory wiring. All build logic lives as modulo_*
-# functions in cmake/ (see cmake/ModuloTargets.cmake).
+# Contains options, toolkit includes, dependency resolution and subdirectory wiring.
+# All build logic is implemented as modulo_* functions in cmake/ (see cmake/ModuloTargets.cmake).
 
 cmake_minimum_required(VERSION 3.28)
 

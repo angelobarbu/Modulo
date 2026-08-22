@@ -13,8 +13,8 @@ namespace modulo::api::json {
 /// wire parsing must never do that. These helpers make every absent or
 /// wrongly-typed field an explicit Error with code "api.invalid_field".
 
-[[nodiscard]] core::Result<QString> requireString(const QJsonObject& object, QLatin1StringView key);
+core::Result<QString> requireString(const QJsonObject& object, QLatin1StringView key);
 
-[[nodiscard]] core::Result<QJsonObject> requireObject(const QJsonObject& object, QLatin1StringView key);
+core::Result<QJsonObject> requireObject(const QJsonObject& object, QLatin1StringView key);
 
 } // namespace modulo::api::json

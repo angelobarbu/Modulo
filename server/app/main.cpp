@@ -1,6 +1,6 @@
 // modulo_server — Modulo REST API server.
 //
-// Configuration comes from environment variables (see .env.example).
+// Configuration from environment variables (see .env.example).
 // Runs until interrupted; serves on 127.0.0.1 only.
 
 #include <modulo/core/version.h>

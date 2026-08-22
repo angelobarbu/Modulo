@@ -7,7 +7,7 @@
 
 namespace modulo::server::config {
 
-/// Server process configuration, sourced from environment variables
+/// Server process configuration sourced from environment variables
 /// (documented in .env.example at the repo root).
 struct Config {
     /// MODULO_DB_URL. May be empty for features that do not touch the
@@ -23,7 +23,7 @@ struct Config {
     /// Build a Config from the process environment. Unset or empty variables
     /// keep their defaults; malformed values yield an Error whose code is
     /// prefixed "config.".
-    [[nodiscard]] static core::Result<Config> fromEnvironment();
+    static core::Result<Config> fromEnvironment();
 };
 
 } // namespace modulo::server::config
