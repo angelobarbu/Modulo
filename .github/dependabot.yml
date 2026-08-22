@@ -1,0 +1,28 @@
+# Dependabot version updates. Homebrew/C++ dependencies are not covered by
+# Dependabot; this keeps the two things it CAN track current:
+#   - GitHub Actions used by .github/workflows/ci.yml
+#   - the PostgreSQL image pinned in docker/docker-compose.yml (minor/patch
+#     only — a major PostgreSQL upgrade is a deliberate decision, not a bot PR)
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "docker-compose"
+    directory: "/docker"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "db"
+    labels:
+      - "dependencies"
+    ignore:
+      - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]
