@@ -1,0 +1,137 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 28,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_PREFIX_PATH": "/opt/homebrew/opt/qt",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "WrapOpenGL_AGL": "/Library/Developer/CommandLineTools/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/AGL.framework",
+                "PostgreSQL_ROOT": "/opt/homebrew/opt/libpq"
+            }
+        },
+        {
+            "name": "dev",
+            "displayName": "Development (Debug, warnings-as-errors)",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "MODULO_WARNINGS_AS_ERRORS": "ON"
+            }
+        },
+        {
+            "name": "dev-asan",
+            "displayName": "Development + address/UB sanitizers",
+            "inherits": "dev",
+            "cacheVariables": {
+                "MODULO_SANITIZERS": "address,undefined"
+            }
+        },
+        {
+            "name": "dev-tidy",
+            "displayName": "Development + clang-tidy on every compile",
+            "inherits": "dev",
+            "cacheVariables": {
+                "MODULO_CLANG_TIDY": "ON"
+            }
+        },
+        {
+            "name": "release",
+            "displayName": "Release (RelWithDebInfo)",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            }
+        },
+        {
+            "name": "ci",
+            "displayName": "Continuous integration (GitHub Actions macOS runner)",
+            "inherits": "dev",
+            "cacheVariables": {
+                "WrapOpenGL_AGL": ""
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "dev",
+            "configurePreset": "dev"
+        },
+        {
+            "name": "dev-asan",
+            "configurePreset": "dev-asan"
+        },
+        {
+            "name": "dev-tidy",
+            "configurePreset": "dev-tidy"
+        },
+        {
+            "name": "release",
+            "configurePreset": "release"
+        },
+        {
+            "name": "ci",
+            "configurePreset": "ci"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "unit",
+            "configurePreset": "dev",
+            "filter": {
+                "include": {
+                    "label": "^unit$"
+                }
+            },
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
+            "name": "integration",
+            "configurePreset": "dev",
+            "filter": {
+                "include": {
+                    "label": "^integration$"
+                }
+            },
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
+            "name": "ui",
+            "configurePreset": "dev",
+            "filter": {
+                "include": {
+                    "label": "^ui$"
+                }
+            },
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
+            "name": "all",
+            "configurePreset": "dev",
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
+            "name": "ci",
+            "configurePreset": "ci",
+            "output": {
+                "outputOnFailure": true
+            }
+        }
+    ]
+}

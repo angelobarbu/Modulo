@@ -1,0 +1,35 @@
+# Modulo development database.
+#
+# Postgres 16 with a named volume for persistence. The host port is 5433
+# (NOT the default 5432) because the local Homebrew PostgreSQL 14 already
+# listens on 5432 on this machine.
+#
+# Managed via scripts/db-up.sh and scripts/db-down.sh.
+# Data survives `down`; wipe it with scripts/db-down.sh --wipe.
+
+name: modulo
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: modulo-postgres
+    restart: unless-stopped
+    ports:
+      # Bind to localhost only — never expose the dev database on the network.
+      - "127.0.0.1:5433:5432"
+    environment:
+      POSTGRES_USER: modulo
+      POSTGRES_PASSWORD: modulo
+      POSTGRES_DB: modulo_dev
+    volumes:
+      - modulo_pgdata:/var/lib/postgresql/data
+      # Runs *.sql once, on first initialization of an empty volume only.
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U modulo -d modulo_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  modulo_pgdata:

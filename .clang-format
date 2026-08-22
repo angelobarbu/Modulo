@@ -1,0 +1,48 @@
+# Modulo C++ formatting rules.
+# Applied by scripts/format.sh using clang-format from /opt/homebrew/opt/llvm/bin.
+---
+Language: Cpp
+BasedOnStyle: LLVM
+Standard: Latest
+
+# Layout
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 120
+AccessModifierOffset: -4
+IndentPPDirectives: BeforeHash
+NamespaceIndentation: None
+FixNamespaceComments: true
+InsertNewlineAtEOF: true
+
+# Pointers & references bind to the type: `int* p`, `const QString& s`.
+PointerAlignment: Left
+ReferenceAlignment: Left
+DerivePointerAlignment: false
+
+# Declarations
+BreakTemplateDeclarations: Yes
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortLambdasOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+SeparateDefinitionBlocks: Always
+
+# Include ordering: main header first (clang-format default), then local "quoted",
+# then project <modulo/...>, then Qt, then third-party, then the C++ standard library.
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^"'
+    Priority: 1
+  - Regex: '^<modulo/'
+    Priority: 2
+  - Regex: '^<Q'
+    Priority: 3
+  - Regex: '^<(pqxx|sodium)'
+    Priority: 4
+  - Regex: '^<[a-z_0-9]+(\.h)?>$'
+    Priority: 5
+  - Regex: '.*'
+    Priority: 4
