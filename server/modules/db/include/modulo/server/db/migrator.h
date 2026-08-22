@@ -36,7 +36,7 @@ struct MigrationResult {
 /// State is tracked in the schema_migrations table:
 /// one row per applied migration with its version, name, content checksum,
 /// and timestamp.
-/// 
+///
 /// Rules:
 ///   - migrations run in ascending version order, each inside one transaction;
 ///   - an already-applied migration whose file is unchanged is skipped;
