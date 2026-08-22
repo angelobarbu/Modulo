@@ -1,5 +1,4 @@
-# modulo_server_db — database access module: migration engine (and, from
-# Increment 2, the libpqxx connection pool used by all repositories).
+# modulo_server_db — database access module and migration engine.
 
 modulo_add_library(
     modulo_server_db

@@ -5,6 +5,7 @@
 # Suppressions (kept deliberately short):
 #   - bugprone-easily-swappable-parameters: too noisy for small DTO/ctor signatures.
 #   - modernize-use-trailing-return-type: we use classic return-type style.
+#   - modernize-use-nodiscard: project decision — no [[nodiscard]] on declarations.
 #   - readability-identifier-length: short names (id, tx, db) are idiomatic here.
 #   - readability-magic-numbers: config defaults and test literals would drown the signal.
 ---
@@ -15,6 +16,7 @@ Checks: >
   readability-*,
   -bugprone-easily-swappable-parameters,
   -modernize-use-trailing-return-type,
+  -modernize-use-nodiscard,
   -readability-identifier-length,
   -readability-magic-numbers
 

@@ -56,7 +56,7 @@ std::string readFile(const std::filesystem::path& path) {
     return std::move(contents).str();
 }
 
-/// Content checksum, computed by PostgreSQL itself (md5 is fine here: this
+/// Content checksum computed by PostgreSQL (md5 is fine here: this
 /// detects accidental edits of applied files, it is not a security boundary).
 std::string checksumOf(pqxx::work& tx, const std::string& sql) {
     return tx.query_value<std::string>("SELECT md5($1)", pqxx::params{sql});

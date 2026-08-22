@@ -1,8 +1,7 @@
 # Modulo — personal investment tracker.
 #
-# This file stays deliberately thin: options, toolkit includes, dependency
-# resolution, and subdirectory wiring. All build logic lives as modulo_*
-# functions in cmake/ (see cmake/ModuloTargets.cmake).
+# Contains options, toolkit includes, dependency resolution and subdirectory wiring.
+# All build logic is implemented as modulo_* functions in cmake/ (see cmake/ModuloTargets.cmake).
 
 cmake_minimum_required(VERSION 3.28)
 
@@ -32,8 +31,7 @@ qt_standard_project_setup(REQUIRES 6.8)
 enable_testing()
 
 # --- Project targets ---------------------------------------------------------
-# Subdirectories are appended as the increments introduce them:
-# add_subdirectory(libs/core)      # Increment 1, Step 5
-# add_subdirectory(libs/api)       # Increment 1, Step 5
+add_subdirectory(libs/core)
+add_subdirectory(libs/api)
 add_subdirectory(server)
-# add_subdirectory(client)         # Increment 1, Step 5
+add_subdirectory(client)

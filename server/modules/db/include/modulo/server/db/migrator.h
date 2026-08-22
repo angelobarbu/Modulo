@@ -33,13 +33,15 @@ struct MigrationResult {
 
 /// Applies SQL migration files to a PostgreSQL database.
 ///
-/// State is tracked in the schema_migrations table (created on demand):
+/// State is tracked in the schema_migrations table:
 /// one row per applied migration with its version, name, content checksum,
-/// and timestamp. Rules:
+/// and timestamp.
+///
+/// Rules:
 ///   - migrations run in ascending version order, each inside one transaction;
 ///   - an already-applied migration whose file is unchanged is skipped;
-///   - an already-applied migration whose file content CHANGED aborts the run
-///     (migrations are append-only — never edit an applied file);
+///   - an already-applied migration whose file content changed aborts the run
+///     (migrations are append-only; never edit an applied file);
 ///   - a failing migration rolls back and aborts; nothing after it runs.
 class Migrator {
 public:
@@ -49,9 +51,9 @@ public:
     Migrator(std::string databaseUrl, std::filesystem::path migrationsDir, Logger logger = {});
 
     /// Scan the migrations directory. Non-dot files that do not match the
-    /// NNNN_name.sql pattern, and duplicate versions, raise MigrationError.
+    /// NNNN_name.sql pattern and duplicate versions raise MigrationError.
     /// Returns migrations sorted by ascending version.
-    [[nodiscard]] std::vector<Migration> discover() const;
+    std::vector<Migration> discover() const;
 
     /// Apply every pending migration. Throws MigrationError (see class docs)
     /// or pqxx errors on connection failure.
