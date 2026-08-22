@@ -15,9 +15,9 @@ can target the same API.
 **Stack:** C++23 · Qt 6.8 · QML · PostgreSQL 16 · CMake ≥ 3.28 · libpqxx · libsodium ·
 Qt Test / Qt Quick Test — no source-level dependencies.
 
-**Status:** pre-release, under active development. Increment 1 (foundations: build system,
-database, migrations, REST skeleton, client shell, test scaffolding) is wrapping up with
-public-repo readiness (license, CI); next up is authentication & RBAC. See the [Roadmap](#roadmap) and the
+**Status:** pre-release, under active development. Increment 1 (foundations — build system,
+database, migrations, REST skeleton, client shell, tests, CI) shipped as `v0.1.0`;
+Increment 2 (authentication & RBAC) is in progress. See the [Roadmap](#roadmap) and the
 [Implementation log](#implementation-log).
 
 The project maximizes Qt framework usage — Qt is used everywhere unless it is clearly
@@ -33,12 +33,20 @@ keeping the future container's migration entrypoint minimal.
 > Developed incrementally, one reviewed step at a time. This README grows with each step —
 > see [Repository layout](#repository-layout) for what exists today.
 
-**Contents:** [Architecture](#architecture) · [Prerequisites](#prerequisites) ·
-[Building](#building) · [Running the stack](#running-the-stack) ·
-[Development database](#development-database) · [Testing](#testing) ·
-[Code style](#code-style) · [Development workflow](#development-workflow) ·
-[Repository layout](#repository-layout) · [Roadmap](#roadmap) ·
-[Implementation log](#implementation-log) · [License](#license)
+## Table of contents
+
+1. [Architecture](#architecture)
+2. [Prerequisites](#prerequisites)
+3. [Building](#building)
+4. [Running the stack](#running-the-stack)
+5. [Development database](#development-database)
+6. [Testing](#testing)
+7. [Code style](#code-style)
+8. [Development workflow](#development-workflow)
+9. [Repository layout](#repository-layout)
+10. [Roadmap](#roadmap)
+11. [Implementation log](#implementation-log)
+12. [License](#license)
 
 ## Architecture
 
@@ -180,6 +188,11 @@ The database URL resolves in order: existing `MODULO_DB_URL` in the environment 
 `.env` at the repo root → the dev-database default. `modulo_migrate --help` shows
 the underlying CLI (`--url`, `--dir`).
 
+Current schema: `0001_init` (metadata) and `0002_auth` (`users`, `roles`, `user_roles`,
+`sessions`, plus a reusable `set_updated_at()` trigger and the `citext` extension for
+case-insensitive emails). The data model is diagrammed in
+[`docs/high_level_design.md`](docs/high_level_design.md#5-data-model).
+
 ## Testing
 
 Tests are registered with CTest under the labels `unit`, `integration`, and `ui`:
@@ -269,8 +282,8 @@ CMakePresets.json configure/build/test presets (dev, dev-asan, dev-tidy, release
 
 | Increment | Scope |
 |---|---|
-| 1 — Foundations (in progress, final step) | Build system, dockerized Postgres, migrations, REST skeleton with health endpoint, client shell, test scaffolding, public-repo readiness |
-| 2 — Auth & RBAC | Users/roles/sessions schema, Argon2id password hashing (libsodium), opaque bearer tokens, `authed()` / `requireRole()` guards, login flow + dark theme system in the client |
+| 1 — Foundations (DONE, `v0.1.0`) | Build system, dockerized Postgres, migrations, REST skeleton with health endpoint, client shell, test scaffolding, public-repo readiness |
+| 2 — Auth & RBAC (in progress) | Users/roles/sessions schema, Argon2id password hashing (libsodium), opaque bearer tokens, `authed()` / `requireRole()` guards, login flow + dark theme system in the client |
 | 3 — Transactions | BUY/SELL/SWAP records with server-side filtering & pagination; add/edit/delete dialog with price-per-unit ⇄ total-value derivation |
 | 4 — Transfers | Bank ⇄ exchange IN/OUT transfers; shared bank-account / exchange reference data |
 | 5 — Holdings & dashboards | Per-asset aggregation (amount, median buy/sell, net profit, portfolio share, value in USD/EUR) and the first Qt Charts dashboards |
@@ -295,6 +308,7 @@ CMakePresets.json configure/build/test presets (dev, dev-asan, dev-tidy, release
 | 1.6b — Qt Test everywhere | Decision: Qt Test replaces Catch2 (one framework for C++ and QML); Catch2 + CPM removed — the project now has zero source-level dependencies |
 | 1.7 — Docs finalization | README restructured for a public audience (status, contents, architecture, workflow, roadmap); HLD gained the test-architecture view; local working agreement (CLAUDE.md) refreshed |
 | 1.8 — Public-repo readiness | MIT `LICENSE`; GitHub Actions CI (macOS runner: brew deps, `ci` preset, `-Werror` build, format check, unit + ui tests); README badges + License section; repository made public and tagged `v0.1.0` |
+| 2.1 — Auth schema | `0002_auth.sql`: `users` (citext email, Argon2id hash, disabled_at), `roles` (admin/user), `user_roles`, `sessions` (SHA-256 token digest, sliding expiry, revocation, partial index); `set_updated_at()` trigger; ER diagram in the HLD |
 
 ## License
 

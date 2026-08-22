@@ -136,7 +136,59 @@ sequenceDiagram
     M-->>U: "N applied, M skipped" (exit code)
 ```
 
-## 5. Test architecture
+## 5. Data model
+
+```mermaid
+erDiagram
+    users {
+        uuid id PK
+        citext email UK "case-insensitive"
+        text display_name
+        text password_hash "Argon2id (libsodium)"
+        timestamptz created_at
+        timestamptz updated_at "trigger set_updated_at"
+        timestamptz disabled_at "null = active"
+    }
+    roles {
+        smallint id PK
+        text name UK "admin, user"
+    }
+    user_roles {
+        uuid user_id PK, FK
+        smallint role_id PK, FK
+    }
+    sessions {
+        uuid id PK
+        uuid user_id FK
+        bytea token_sha256 UK "digest only, 32 bytes"
+        timestamptz created_at
+        timestamptz expires_at "sliding 30 days"
+        timestamptz last_seen_at
+        timestamptz revoked_at "null = active"
+    }
+    meta {
+        text key PK
+        text value
+        timestamptz updated_at
+    }
+    schema_migrations {
+        integer version PK
+        text name
+        text checksum "md5 of file"
+        timestamptz applied_at
+    }
+
+    users ||--o{ user_roles : "has"
+    roles ||--o{ user_roles : "granted as"
+    users ||--o{ sessions : "owns (cascade delete)"
+```
+
+Migrations so far: `0001_init` (meta), `0002_auth` (users, roles, user_roles, sessions, `set_updated_at()` trigger,
+`citext` extension). `schema_migrations` is not created by a migration file — the migration engine
+(`modules/db`, `migrator.cpp`) creates it on first run and owns it. Tokens are never stored: the server keeps only the SHA-256 digest, so a database leak cannot
+be replayed as a login.
+
+## 6. Test architecture
 
 ```mermaid
 flowchart LR
