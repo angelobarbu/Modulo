@@ -91,7 +91,7 @@ created by the `modulo_*` CMake toolkit functions (warnings, sanitizers, clang-t
 injection, qt.conf generation applied uniformly). Coming next: `modulo_server_auth` (Increment 2),
 then transactions / transfers / holdings / rates / documents as sibling modules.
 
-## 3. Runtime flow — health check (the pipe proven in Step 5)
+## 3. Runtime flow — health check
 
 ```mermaid
 sequenceDiagram
@@ -135,3 +135,38 @@ sequenceDiagram
     end
     M-->>U: "N applied, M skipped" (exit code)
 ```
+
+## 5. Test architecture
+
+```mermaid
+flowchart LR
+    subgraph unit["label: unit — Qt Test, no Docker"]
+        t1["modulo_core_tests"]
+        t2["modulo_api_health_dto_tests
+modulo_api_error_dto_tests
+modulo_api_json_tests"]
+        t3["modulo_server_config_tests"]
+    end
+    subgraph integ["label: integration — opt-in"]
+        t4["modulo_integration_tests
+in-process QHttpServer on port 0
++ QNetworkAccessManager client"]
+    end
+    subgraph ui["label: ui — Qt Quick Test, offscreen"]
+        t5["modulo_client_qml_tests
+tst_*.qml via QUICK_TEST_MAIN"]
+    end
+
+    env["MODULO_TEST_DB_URL"] -. "unset → QSKIP → CTest Skipped" .-> t4
+    support["tests/support/include/modulo/testing/
+integration.h: MODULO_REQUIRE_TEST_DATABASE(), httpGet()"] --> t4
+
+    presets["ctest --preset unit | integration | ui | all"] --> unit
+    presets --> integ
+    presets --> ui
+```
+
+Conventions: one `QObject` test class per binary (`QTEST_GUILESS_MAIN`), data-driven rows via
+`_data()` slots; each target's `tests/` directory is auto-discovered by the CMake toolkit, which
+links `Qt6::Test`, adds the shared support include dir, and maps Qt Test's `SKIP   :` output to
+CTest's *Skipped* status. Cross-module integration tests live only in `server/tests/integration/`.
