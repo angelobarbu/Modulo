@@ -6,3 +6,6 @@ add_subdirectory(modules/http)
 
 add_subdirectory(app)
 add_subdirectory(migrate)
+
+# Cross-module integration tests (label: integration).
+add_subdirectory(tests/integration)
