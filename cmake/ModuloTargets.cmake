@@ -12,8 +12,9 @@
 #       Application or tool binary.
 #
 #   modulo_add_test(<name> LABEL unit|integration SOURCES ... [DEPS ...])
-#       Catch2 test binary, registered with CTest under the given label
-#       (labels drive the `unit` / `integration` / `all` test presets).
+#       Qt Test binary (one QObject test class, QTEST_GUILESS_MAIN), registered
+#       with CTest under the given label (labels drive the `unit` /
+#       `integration` / `all` test presets).
 #
 #   modulo_add_qml_test(<name> QML_DIR <dir> SOURCES ... [DEPS ...])
 #       Qt Quick Test binary running the tst_*.qml files in QML_DIR,
@@ -48,6 +49,14 @@ function(_modulo_write_qt_conf target)
         return()
     endif()
 
+    # Executables land in the current binary dir; one qt.conf per directory
+    # serves every binary in it (generating the same file twice is an error).
+    get_property(_modulo_qt_conf_written DIRECTORY PROPERTY MODULO_QT_CONF_WRITTEN)
+    if(_modulo_qt_conf_written)
+        return()
+    endif()
+    set_property(DIRECTORY PROPERTY MODULO_QT_CONF_WRITTEN TRUE)
+
     get_filename_component(_modulo_qt_root "${Qt6_DIR}/../../.." ABSOLUTE)
     if(EXISTS "${_modulo_qt_root}/share/qt/plugins")
         set(_modulo_qt_prefix "${_modulo_qt_root}/share/qt") # Homebrew layout
@@ -57,8 +66,16 @@ function(_modulo_write_qt_conf target)
 
     file(
         GENERATE
-        OUTPUT "$<TARGET_FILE_DIR:${target}>/qt.conf"
+        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/qt.conf"
         CONTENT "[Paths]\nPrefix = ${_modulo_qt_prefix}\n")
+endfunction()
+
+# Module convention: a target's tests live in ./tests and are picked up
+# automatically when MODULO_BUILD_TESTS is ON — no per-module wiring needed.
+function(_modulo_add_tests_subdirectory)
+    if(MODULO_BUILD_TESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/CMakeLists.txt")
+        add_subdirectory(tests)
+    endif()
 endfunction()
 
 function(modulo_add_library name)
@@ -85,6 +102,7 @@ function(modulo_add_library name)
     endif()
 
     _modulo_apply_common_settings(${name})
+    _modulo_add_tests_subdirectory()
 endfunction()
 
 function(modulo_add_executable name)
@@ -144,6 +162,7 @@ function(modulo_add_qml_app name)
 
     _modulo_apply_common_settings(${name})
     _modulo_write_qt_conf(${name})
+    _modulo_add_tests_subdirectory()
 endfunction()
 
 function(modulo_add_test name)
@@ -160,17 +179,23 @@ function(modulo_add_test name)
         message(FATAL_ERROR "modulo_add_test(${name}): SOURCES is required")
     endif()
 
+    # One Qt Test class per binary (QTEST_GUILESS_MAIN in the single source file).
     add_executable(${name} ${ARG_SOURCES})
-    target_link_libraries(${name} PRIVATE Catch2::Catch2WithMain)
+    target_link_libraries(${name} PRIVATE Qt6::Test)
     if(ARG_DEPS)
         target_link_libraries(${name} PRIVATE ${ARG_DEPS})
     endif()
+
+    # Shared test-support headers (<modulo/testing/...>): integration fixtures etc.
+    target_include_directories(${name} PRIVATE "${CMAKE_SOURCE_DIR}/tests/support/include")
 
     _modulo_apply_common_settings(${name})
     _modulo_write_qt_conf(${name})
 
     add_test(NAME ${name} COMMAND ${name})
-    set_tests_properties(${name} PROPERTIES LABELS ${ARG_LABEL})
+    # QSKIP() prints "SKIP   : ..." and exits 0; make CTest report the binary as
+    # skipped (e.g. integration tests without a database), not passed.
+    set_tests_properties(${name} PROPERTIES LABELS ${ARG_LABEL} SKIP_REGULAR_EXPRESSION "SKIP   : ")
 endfunction()
 
 function(modulo_add_qml_test name)
@@ -200,5 +225,6 @@ function(modulo_add_qml_test name)
     _modulo_write_qt_conf(${name})
 
     add_test(NAME ${name} COMMAND ${name})
-    set_tests_properties(${name} PROPERTIES LABELS ui)
+    # QML tests need a QPA platform but no display: run them offscreen.
+    set_tests_properties(${name} PROPERTIES LABELS ui ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 endfunction()

@@ -1,26 +1,15 @@
 # Dependencies.cmake — Third-party dependencies.
 #
-# `modulo_find_dependencies()` resolves:
-#   - Homebrew binary libs: Qt 6.8+, libpqxx, libsodium
-#   - CPM-pinned source libs: Catch2 v3
+# `modulo_find_dependencies()` resolves every external dependency in one
+# place. All of them are Homebrew binary libraries: Qt 6.8+, libpqxx, libsodium.
+# There are no source-level dependencies (testing uses Qt Test).
 #
 # A macro so find_package results land in the caller's
 # directory scope. Called from the root CMakeLists.txt.
 
 include_guard(GLOBAL)
 
-# Source dependencies are cached outside the build tree so wiping build/
-# does not re-download them (.cache/ is gitignored). Must be set BEFORE
-# include(CPM): CPM initializes this cache variable itself on include and
-# a later set(... CACHE ...) would not override the existing entry.
-set(CPM_SOURCE_CACHE
-    "${CMAKE_SOURCE_DIR}/.cache/cpm"
-    CACHE PATH "Download cache for CPM source dependencies")
-
-include(CPM)
-
 macro(modulo_find_dependencies)
-    # --- Homebrew binary libraries -------------------------------------------
     # Qt path comes from CMAKE_PREFIX_PATH (set by the presets: /opt/homebrew/opt/qt).
     find_package(
         Qt6 6.8 REQUIRED
@@ -49,10 +38,5 @@ macro(modulo_find_dependencies)
             sodium::sodium
             PROPERTIES IMPORTED_LOCATION "${MODULO_SODIUM_LIBRARY}"
                        INTERFACE_INCLUDE_DIRECTORIES "${MODULO_SODIUM_INCLUDE_DIR}")
-    endif()
-
-    # --- CPM source libraries (version-pinned) -------------------------------
-    if(MODULO_BUILD_TESTS)
-        cpmaddpackage("gh:catchorg/Catch2@3.8.1")
     endif()
 endmacro()

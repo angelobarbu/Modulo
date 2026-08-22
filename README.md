@@ -9,14 +9,14 @@ authentication sessions and business logic; a Qt 6 / QML desktop client for macO
 the API. The backend is designed to be containerized later and future web/mobile clients
 can target the same API.
 
-**Stack:** C++23 · Qt 6.8 · QML · PostgreSQL 16 · CMake ≥ 3.28 · libpqxx · libsodium ·
-Catch2 v3
+**Stack:** C++23 · Qt 6.8 · QML · PostgreSQL 16 · CMake ≥ 3.28 · libpqxx · libsodium · Testing: Qt Test / Qt Quick Test (Client UI)
 
-The project focuses on maximizing Qt framework usage: QJson wire format, `Q_GADGET` DTOs readable
+The project maximizes Qt framework usage — Qt is used everywhere unless it is clearly
+costly and an alternative is much more efficient: QJson wire format, `Q_GADGET` DTOs readable
 from QML, `QString` + `.arg()` as the project-wide string idiom, Qt integer typedefs
 (`quint16`, etc.) in Qt-facing code, `qInfo()`/`qCritical()` logging in applications
-(`QLoggingCategory` planned with the auth increment), and Qt networking/HTTP/UI
-throughout. The C++23 standard library is used only where Qt has no equivalent
+(`QLoggingCategory` planned with the auth increment), Qt Test for every test suite, and Qt
+networking/HTTP/UI throughout. The C++23 standard library is used only where Qt has no equivalent
 (`std::expected`-based `Result<T>`, `std::filesystem`). The Qt-free zone is
 `server/modules/db` + `modulo_migrate` (pure libpqxx; stdout is the CLI's interface),
 keeping the future container's migration entrypoint minimal.
@@ -70,8 +70,8 @@ cmake --build --preset dev    # build
 | `dev-tidy` | `dev` + clang-tidy on every compile |
 | `release` | RelWithDebInfo |
 
-Build directories are generated in `build/<preset>/`. Third-party sources fetched by CPM are cached
-in `.cache/cpm/` and survive build-directory wipes.
+Build directories are generated in `build/<preset>/`. All dependencies are Homebrew binary
+libraries — nothing is downloaded at configure time.
 
 All build logic can be found in `modulo_*` functions under [`cmake/`](cmake/) module -
 `modulo_add_library`, `modulo_add_executable`, `modulo_add_test`, `modulo_add_qml_test`.
@@ -142,13 +142,31 @@ the underlying CLI (`--url`, `--dir`).
 Tests are registered with CTest under the labels `unit`, `integration`, and `ui`:
 
 ```sh
-ctest --preset unit           # fast, no Docker needed
-ctest --preset integration    # requires the database (scripts/db-up.sh)
-ctest --preset ui             # QML/Qt Quick tests
+ctest --preset unit           # Qt Test, fast, no Docker needed
+ctest --preset integration    # opt-in: set MODULO_TEST_DB_URL (see .env.example)
+ctest --preset ui             # Qt Quick Test, runs offscreen automatically
 ctest --preset all
 ```
 
-(No tests exist yet - they are planned for implementation soon.)
+All suites use **Qt Test** (C++) and **Qt Quick Test** (QML) — one QObject test class per
+binary, data-driven rows via `_data()` slots:
+
+| Test binary | Label | What it covers |
+|---|---|---|
+| `modulo_core_tests` | unit | `version()` matches the CMake project version, semver shape |
+| `modulo_api_health_dto_tests` | unit | `HealthResponse` JSON round-trip; `fromJson` rejecting missing/mistyped fields |
+| `modulo_api_error_dto_tests` | unit | `ErrorResponse` envelope shape and round-trip; rejection of flat/incomplete envelopes |
+| `modulo_api_json_tests` | unit | `api::json::require*` never falling back to QJson's silent defaults (missing, number, object, array, null) |
+| `modulo_server_config_tests` | unit | defaults, every variable, empty-means-unset, port 0, malformed ports → `config.invalid_port` |
+| `modulo_integration_tests` | integration | real `QHttpServer` on an OS-assigned port + real HTTP client: `/api/v1/health` body and version, 404 error envelope |
+| `modulo_client_qml_tests` | ui | `QUICK_TEST_MAIN` runner over `client/tests/qml/tst_*.qml` (Qt Quick + Material smoke) |
+
+Conventions: every module's tests live in its own `tests/` directory (auto-discovered by
+the CMake toolkit); cross-module integration tests live in `server/tests/integration/`;
+shared fixtures are in `tests/support/include/modulo/testing/`. Integration tests are
+**opt-in**: they start with `MODULO_REQUIRE_TEST_DATABASE()`, which `QSKIP`s without
+`MODULO_TEST_DB_URL`, and CTest reports the binary as *Skipped* — so `ctest --preset all`
+never needs Docker to pass.
 
 ## Code style
 
@@ -166,14 +184,15 @@ scripts/format.sh --check     # verify only (CI mode)
 ## Repository layout
 
 ```
-cmake/            CMake toolkit: all build logic as modulo_* functions + vendored CPM.cmake
+cmake/            CMake toolkit: all build logic as modulo_* functions
 db/migrations/    append-only SQL schema migrations (NNNN_name.sql)
 docs/             high_level_design.md (Architecture diagrams)
 docker/           docker-compose.yml (Postgres 16 on :5433) + one-time initdb scripts
 libs/core/        modulo_core — Qt-free foundations (version, Result<T> on std::expected)
 libs/api/         modulo_api — Q_GADGET DTOs + validating QJson mappings shared by server and client
 scripts/          db-up.sh, db-down.sh, migrate.sh, format.sh
-server/           backend: per-module static libraries + executables
+tests/support/    shared test fixtures (<modulo/testing/...>) for integration tests
+server/           backend: per-module static libraries + executables (each module has its own tests/)
   modules/config/ modulo_server_config — env-based process configuration
   modules/db/     modulo_server_db — migration engine (connection pool arrives in Increment 2)
   modules/http/   modulo_server_http — QHttpServer wrapper, routes, error envelope
@@ -197,3 +216,5 @@ CMakePresets.json configure/build/test presets (dev, dev-asan, dev-tidy, release
 | 1.5 — Stubs across the stack | `modulo_core` (version, `Result<T>`), `modulo_api` (Health/Error DTOs), `config` + `http` server modules, `modulo_server` serving `/api/v1/health`, QML client with live status; toolkit grew `modulo_add_qml_app`, version injection, qt.conf generation, AGL workaround |
 | 1.5b — Qt-wide uniformity | Decision: maximize Qt uniformity. DTOs became `Q_GADGET`s with validating QJson mappings (`api::json::require*` — no silent defaults); nlohmann-json dependency removed. `QString` project-wide (incl. `core::Error`/`version()`), `.arg()` over `std::format` in Qt code, `quint16` in Qt-facing types, `qInfo`/`qCritical` in apps; Qt-free zone narrowed to `modules/db` + `modulo_migrate` |
 | 1.5c — Cleanup | Further code & comments cleanup; revisioned documentation |
+| 1.6 — Test scaffolding | One passing suite per layer: core, api (DTO + `require*` rejection paths), config, in-process HTTP integration (opt-in via `MODULO_TEST_DB_URL`, Skipped otherwise), QML smoke (offscreen); toolkit auto-discovers `tests/` dirs |
+| 1.6b — Qt Test everywhere | Decision: Qt Test replaces Catch2 (one framework for C++ and QML); Catch2 + CPM removed — the project now has zero source-level dependencies |
