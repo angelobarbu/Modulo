@@ -1,5 +1,8 @@
 # Modulo
 
+[![CI](https://github.com/angelobarbu/Modulo/actions/workflows/ci.yml/badge.svg)](https://github.com/angelobarbu/Modulo/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-00ffa3.svg)](LICENSE)
+
 A personal investment tracker for crypto and stock assets — transactions, bank↔exchange
 transfers, aggregated holdings with dashboards, uploaded documents, and daily exchange-rate
 updates.
@@ -35,7 +38,7 @@ keeping the future container's migration entrypoint minimal.
 [Development database](#development-database) · [Testing](#testing) ·
 [Code style](#code-style) · [Development workflow](#development-workflow) ·
 [Repository layout](#repository-layout) · [Roadmap](#roadmap) ·
-[Implementation log](#implementation-log)
+[Implementation log](#implementation-log) · [License](#license)
 
 ## Architecture
 
@@ -105,6 +108,7 @@ cmake --build --preset dev    # build
 | `dev-asan` | `dev` + address & undefined-behavior sanitizers |
 | `dev-tidy` | `dev` + clang-tidy on every compile |
 | `release` | RelWithDebInfo |
+| `ci` | `dev` without the local AGL SDK pin — used by GitHub Actions |
 
 Build directories are generated in `build/<preset>/`. All dependencies are Homebrew binary
 libraries — nothing is downloaded at configure time.
@@ -228,6 +232,13 @@ Work is organized in **increments** (a coherent feature area) made of small **st
 - every step ships with its README update (see the [Implementation log](#implementation-log))
   and must pass a clean `-Werror` build, `scripts/format.sh --check`, and `ctest --preset all`.
 
+**Continuous integration** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on
+every push to `main`/`increment-*` and on pull requests: a macOS (Apple Silicon) runner
+installs the Homebrew dependencies, configures with the `ci` preset (identical to `dev`
+minus the machine-specific AGL pin), builds with `-Werror`, checks formatting, and runs
+the unit and UI suites. Integration tests report as *Skipped* in CI until a Linux job with
+a PostgreSQL service container arrives alongside the containerized backend.
+
 ## Repository layout
 
 ```
@@ -280,3 +291,8 @@ CMakePresets.json configure/build/test presets (dev, dev-asan, dev-tidy, release
 | 1.6 — Test scaffolding | One passing suite per layer: core, api (DTO + `require*` rejection paths), config, in-process HTTP integration (opt-in via `MODULO_TEST_DB_URL`, Skipped otherwise), QML smoke (offscreen); toolkit auto-discovers `tests/` dirs |
 | 1.6b — Qt Test everywhere | Decision: Qt Test replaces Catch2 (one framework for C++ and QML); Catch2 + CPM removed — the project now has zero source-level dependencies |
 | 1.7 — Docs finalization | README restructured for a public audience (status, contents, architecture, workflow, roadmap); HLD gained the test-architecture view; local working agreement (CLAUDE.md) refreshed |
+| 1.8 — Public-repo readiness | MIT `LICENSE`; GitHub Actions CI (macOS runner: brew deps, `ci` preset, `-Werror` build, format check, unit + ui tests); README badges + License section; repository made public and tagged `v0.1.0` |
+
+## License
+
+Modulo is released under the [MIT License](LICENSE).

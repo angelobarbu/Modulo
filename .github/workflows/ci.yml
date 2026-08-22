@@ -1,0 +1,54 @@
+# Continuous integration: configure + build (-Werror), formatting check, and the
+# unit + UI test suites on a macOS runner (the project's primary platform).
+#
+# Integration tests need PostgreSQL, which macOS runners cannot provide via
+# Docker; they are opt-in (MODULO_TEST_DB_URL) and therefore report as Skipped
+# here. A Linux job with a Postgres service container arrives with the
+# containerized backend (Increment 9).
+
+name: CI
+
+on:
+  push:
+    branches: [main, "increment-*"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & test (macOS, Apple Silicon)
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        # clang-format (small formula) instead of the full llvm keg; scripts/format.sh
+        # picks it up through CLANG_FORMAT.
+        run: brew install ninja qt libpqxx libsodium clang-format
+
+      - name: Show toolchain versions
+        run: |
+          cmake --version | head -1
+          ninja --version
+          brew list --versions qt libpqxx libsodium clang-format
+          "$(brew --prefix clang-format)/bin/clang-format" --version
+
+      - name: Configure
+        run: cmake --preset ci
+
+      - name: Build
+        run: cmake --build --preset ci
+
+      - name: Check formatting
+        env:
+          CLANG_FORMAT: /opt/homebrew/opt/clang-format/bin/clang-format
+        run: scripts/format.sh --check
+
+      - name: Run tests (unit + ui; integration skips without a database)
+        run: ctest --preset ci
