@@ -30,7 +30,7 @@ jobs:
       - name: Install dependencies
         # clang-format (small formula) instead of the full llvm keg; scripts/format.sh
         # picks it up through CLANG_FORMAT.
-        run: brew install ninja qt libpqxx libsodium clang-format
+        run: brew install ninja qt libpq libpqxx libsodium clang-format
 
       - name: Show toolchain versions
         run: |

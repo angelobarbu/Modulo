@@ -73,6 +73,9 @@ brew install cmake ninja llvm libpqxx libsodium qt
 - **Qt 6.8+** is expected at `/opt/homebrew/opt/qt` (the CMake presets bake this path in).
 - **llvm** provides `clang-format`/`clang-tidy`; it is keg-only, so scripts and CMake
   reference `/opt/homebrew/opt/llvm/bin` by absolute path.
+- **libpqxx** pulls in the keg-only `libpq`; the presets point CMake at it
+  (`PostgreSQL_ROOT=/opt/homebrew/opt/libpq`) so the build never depends on a stray
+  local PostgreSQL installation.
 - **Docker** (Docker Desktop or any `docker compose` v2) must be running for the
   development database.
 - The local Homebrew PostgreSQL (if any) can run in parallel - the dockerized database uses

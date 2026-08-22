@@ -14,7 +14,8 @@
             "cacheVariables": {
                 "CMAKE_PREFIX_PATH": "/opt/homebrew/opt/qt",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-                "WrapOpenGL_AGL": "/Library/Developer/CommandLineTools/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/AGL.framework"
+                "WrapOpenGL_AGL": "/Library/Developer/CommandLineTools/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/AGL.framework",
+                "PostgreSQL_ROOT": "/opt/homebrew/opt/libpq"
             }
         },
         {
