@@ -33,12 +33,20 @@ keeping the future container's migration entrypoint minimal.
 > Developed incrementally, one reviewed step at a time. This README grows with each step —
 > see [Repository layout](#repository-layout) for what exists today.
 
-**Contents:** [Architecture](#architecture) · [Prerequisites](#prerequisites) ·
-[Building](#building) · [Running the stack](#running-the-stack) ·
-[Development database](#development-database) · [Testing](#testing) ·
-[Code style](#code-style) · [Development workflow](#development-workflow) ·
-[Repository layout](#repository-layout) · [Roadmap](#roadmap) ·
-[Implementation log](#implementation-log) · [License](#license)
+## Table of contents
+
+1. [Architecture](#architecture)
+2. [Prerequisites](#prerequisites)
+3. [Building](#building)
+4. [Running the stack](#running-the-stack)
+5. [Development database](#development-database)
+6. [Testing](#testing)
+7. [Code style](#code-style)
+8. [Development workflow](#development-workflow)
+9. [Repository layout](#repository-layout)
+10. [Roadmap](#roadmap)
+11. [Implementation log](#implementation-log)
+12. [License](#license)
 
 ## Architecture
 
@@ -274,7 +282,7 @@ CMakePresets.json configure/build/test presets (dev, dev-asan, dev-tidy, release
 
 | Increment | Scope |
 |---|---|
-| 1 — Foundations ✅ (`v0.1.0`) | Build system, dockerized Postgres, migrations, REST skeleton with health endpoint, client shell, test scaffolding, public-repo readiness |
+| 1 — Foundations (DONE, `v0.1.0`) | Build system, dockerized Postgres, migrations, REST skeleton with health endpoint, client shell, test scaffolding, public-repo readiness |
 | 2 — Auth & RBAC (in progress) | Users/roles/sessions schema, Argon2id password hashing (libsodium), opaque bearer tokens, `authed()` / `requireRole()` guards, login flow + dark theme system in the client |
 | 3 — Transactions | BUY/SELL/SWAP records with server-side filtering & pagination; add/edit/delete dialog with price-per-unit ⇄ total-value derivation |
 | 4 — Transfers | Bank ⇄ exchange IN/OUT transfers; shared bank-account / exchange reference data |
