@@ -64,7 +64,12 @@ api::json::require*"]
     cfg["modulo_server_config"]
     httpm["modulo_server_http"]
     dbm["modulo_server_db
-(Qt-free · libpqxx)"]
+(Qt-free · libpqxx)
+Migrator · ConnectionPool"]
+    authm["modulo_server_auth
+PasswordHasher (Argon2id)
+token · Role
+UserRepository · SessionRepository"]
 
     server(["modulo_server (exe)"])
     migrateexe(["modulo_migrate (exe, Qt-free)"])
@@ -72,6 +77,8 @@ api::json::require*"]
 
     api --> core
     cfg --> core
+    authm --> core
+    authm --> dbm
     httpm --> api
     httpm --> cfg
     server --> httpm
@@ -80,16 +87,19 @@ api::json::require*"]
 
     qt["Qt6: Core · Network · HttpServer · Quick"]
     pqxx["libpqxx 8"]
+    sodium["libsodium"]
     httpm -.-> qt
     clientexe -.-> qt
     core -.-> qt
     dbm -.-> pqxx
+    authm -.-> sodium
 ```
 
 Every server-side module is its own static library (`CMakeLists.txt` + `include/modulo/...` + `src/`),
 created by the `modulo_*` CMake toolkit functions (warnings, sanitizers, clang-tidy, version
-injection, qt.conf generation applied uniformly). Coming next: `modulo_server_auth` (Increment 2),
-then transactions / transfers / holdings / rates / documents as sibling modules.
+injection, qt.conf generation applied uniformly). `modulo_server_auth` holds the crypto and data layer
+of Increment 2; the HTTP routes that use it (service + guards) are wired through `modulo_server_http`
+next. Transactions / transfers / holdings / rates / documents follow as sibling modules.
 
 ## 3. Runtime flow — health check
 
@@ -198,11 +208,17 @@ flowchart LR
 modulo_api_error_dto_tests
 modulo_api_json_tests"]
         t3["modulo_server_config_tests"]
+        t6["modulo_core_password_policy_tests
+modulo_server_auth_*_tests
+(hasher · token · roles)"]
     end
     subgraph integ["label: integration — opt-in"]
         t4["modulo_integration_tests
 in-process QHttpServer on port 0
 + QNetworkAccessManager client"]
+        t7["modulo_auth_repositories_tests
+ConnectionPool + repositories
+against modulo_test"]
     end
     subgraph ui["label: ui — Qt Quick Test, offscreen"]
         t5["modulo_client_qml_tests
@@ -210,6 +226,7 @@ tst_*.qml via QUICK_TEST_MAIN"]
     end
 
     env["MODULO_TEST_DB_URL"] -. "unset → QSKIP → CTest Skipped" .-> t4
+    env -.-> t7
     support["tests/support/include/modulo/testing/
 integration.h: MODULO_REQUIRE_TEST_DATABASE(), httpGet()"] --> t4
 
