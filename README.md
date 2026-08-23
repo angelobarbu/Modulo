@@ -210,11 +210,16 @@ binary, data-driven rows via `_data()` slots:
 | Test binary | Label | What it covers |
 |---|---|---|
 | `modulo_core_tests` | unit | `version()` matches the CMake project version, semver shape |
+| `modulo_core_password_policy_tests` | unit | shared password rules (length bounds, stable `password.*` codes) |
 | `modulo_api_health_dto_tests` | unit | `HealthResponse` JSON round-trip; `fromJson` rejecting missing/mistyped fields |
 | `modulo_api_error_dto_tests` | unit | `ErrorResponse` envelope shape and round-trip; rejection of flat/incomplete envelopes |
 | `modulo_api_json_tests` | unit | `api::json::require*` never falling back to QJson's silent defaults (missing, number, object, array, null) |
 | `modulo_server_config_tests` | unit | defaults, every variable, empty-means-unset, port 0, malformed ports → `config.invalid_port` |
+| `modulo_server_auth_password_hasher_tests` | unit | Argon2id hash/verify, unique salts, unicode, malformed hashes, rehash detection |
+| `modulo_server_auth_token_tests` | unit | 43-char base64url tokens, uniqueness, SHA-256 digest (known answer) |
+| `modulo_server_auth_roles_tests` | unit | role ids/names match the schema catalogue |
 | `modulo_integration_tests` | integration | real `QHttpServer` on an OS-assigned port + real HTTP client: `/api/v1/health` body and version, 404 error envelope |
+| `modulo_auth_repositories_tests` | integration | connection pool (lazy open, reuse) and user/session repositories against `modulo_test`: case-insensitive lookup, `auth.email_taken`, session create/find/touch/revoke, expiry, revoke-all |
 | `modulo_client_qml_tests` | ui | `QUICK_TEST_MAIN` runner over `client/tests/qml/tst_*.qml` (Qt Quick + Material smoke) |
 
 Conventions: every module's tests live in its own `tests/` directory (auto-discovered by
@@ -262,13 +267,14 @@ cmake/            CMake toolkit: all build logic as modulo_* functions
 db/migrations/    append-only SQL schema migrations (NNNN_name.sql)
 docs/             high_level_design.md (Mermaid architecture diagrams)
 docker/           docker-compose.yml (Postgres 16 on :5433) + one-time initdb scripts
-libs/core/        modulo_core — foundations: version(), Result<T> (std::expected + QString error codes)
+libs/core/        modulo_core — foundations: version(), Result<T>, shared password policy
 libs/api/         modulo_api — Q_GADGET DTOs + validating QJson mappings shared by server and client
 scripts/          db-up.sh, db-down.sh, migrate.sh, format.sh
 tests/support/    shared test fixtures (<modulo/testing/...>) for integration tests
 server/           backend: per-module static libraries + executables (each module has its own tests/)
   modules/config/ modulo_server_config — env-based process configuration
-  modules/db/     modulo_server_db — migration engine (connection pool arrives in Increment 2)
+  modules/db/     modulo_server_db — migration engine + libpqxx connection pool (Qt-free)
+  modules/auth/   modulo_server_auth — Argon2id hashing, session tokens, user/session repositories
   modules/http/   modulo_server_http — QHttpServer wrapper, routes, error envelope
   app/            modulo_server — REST API server executable
   migrate/        modulo_migrate — CLI migration runner
@@ -309,6 +315,7 @@ CMakePresets.json configure/build/test presets (dev, dev-asan, dev-tidy, release
 | 1.7 — Docs finalization | README restructured for a public audience (status, contents, architecture, workflow, roadmap); HLD gained the test-architecture view; local working agreement (CLAUDE.md) refreshed |
 | 1.8 — Public-repo readiness | MIT `LICENSE`; GitHub Actions CI (macOS runner: brew deps, `ci` preset, `-Werror` build, format check, unit + ui tests); README badges + License section; repository made public and tagged `v0.1.0` |
 | 2.1 — Auth schema | `0002_auth.sql`: `users` (citext email, Argon2id hash, disabled_at), `roles` (admin/user), `user_roles`, `sessions` (SHA-256 token digest, sliding expiry, revocation, partial index); `set_updated_at()` trigger; ER diagram in the HLD |
+| 2.2 — Auth crypto & data layer | `modulo_server_auth` module: Argon2id `PasswordHasher` (libsodium), opaque `token::generate`/`digest`, `Role` catalogue, `UserRepository` + `SessionRepository` (Result-returning, never throw); libpqxx `ConnectionPool` in `modules/db`; shared `core::validatePassword`; 5 new test binaries |
 
 ## License
 

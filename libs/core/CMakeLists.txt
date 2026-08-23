@@ -2,5 +2,5 @@
 
 modulo_add_library(
     modulo_core
-    SOURCES src/version.cpp
+    SOURCES src/password_policy.cpp src/version.cpp
     PUBLIC_DEPS Qt6::Core)
