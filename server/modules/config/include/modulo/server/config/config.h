@@ -20,6 +20,11 @@ struct Config {
     /// MODULO_DATA_DIR — root for server-managed files (document uploads).
     QString dataDir = QStringLiteral("./var/data");
 
+    /// MODULO_ALLOW_REGISTRATION - whether POST /api/v1/auth/register accepts
+    /// new accounts once the first (admin) account exists. The very first
+    /// account can always be created, otherwise there would be no way in.
+    bool allowRegistration = true;
+
     /// Build a Config from the process environment. Unset or empty variables
     /// keep their defaults; malformed values yield an Error whose code is
     /// prefixed "config.".

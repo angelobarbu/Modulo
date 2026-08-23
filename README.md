@@ -138,12 +138,33 @@ scripts/db-up.sh                      # 1. database (the health endpoint does no
 ./build/dev/client/modulo_client      # 3. desktop client (separate terminal)
 ```
 
-The server exposes `GET /api/v1/health` → `{"status":"ok","version":"0.1.0"}`; any
-unknown route returns the uniform error envelope
-`{"error":{"code":"not_found","message":"..."}}` with the matching HTTP status. The
-client window (placeholder) polls health every 3 s and shows a live
-green/red status indicator. `MODULO_HTTP_PORT` and `MODULO_API_URL` override the
-server port and the client's target.
+The server needs `MODULO_DB_URL` (connections open lazily, so start-up itself does not
+touch the database). Any unknown route returns the uniform error envelope
+`{"error":{"code":"not_found","message":"..."}}` with the matching HTTP status, and every
+response carries `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`,
+`X-Frame-Options: DENY` and `Referrer-Policy: no-referrer`. The client window
+(placeholder) polls health every 3 s and shows a live green/red status indicator.
+`MODULO_HTTP_PORT` and `MODULO_API_URL` override the server port and the client's target.
+
+### API
+
+| Endpoint | Auth | Body / result |
+|---|---|---|
+| `GET /api/v1/health` | - | `{"status":"ok","version":"0.1.0"}` |
+| `POST /api/v1/auth/register` | - | `{email, displayName, password}` → 201 user. The first account becomes `admin` + `user`; later accounts are `user` and require `MODULO_ALLOW_REGISTRATION=true` (403 `auth.registration_disabled` otherwise) |
+| `POST /api/v1/auth/login` | - | `{email, password}` → 200 `{token, user}`. Unknown email, wrong password and disabled account all answer 401 `auth.invalid_credentials` with identical timing |
+| `GET /api/v1/auth/me` | Bearer | 200 user |
+| `POST /api/v1/auth/logout` | Bearer | 204; the token is revoked immediately |
+
+Authentication is an opaque bearer token (`Authorization: Bearer <token>`) issued at login;
+the server stores only its SHA-256 digest. Sessions last 30 days and slide forward on use.
+Missing or invalid tokens answer 401 `auth.unauthenticated`; a valid token without the
+required role answers 403 `auth.forbidden`. Error codes map to statuses centrally
+(`api.*`/`password.*`/`auth.invalid_*` → 400, `auth.email_taken` → 409, `db.*` → 503).
+
+Logging uses `QLoggingCategory`: `modulo.auth` (registration, login, logout, session events -
+ids only, never tokens or emails) and `modulo.http` (lifecycle at info, one line per request
+at debug). Enable request logging with `QT_LOGGING_RULES="modulo.http.debug=true"`.
 
 ## Development database
 
@@ -191,7 +212,7 @@ the underlying CLI (`--url`, `--dir`).
 Current schema: `0001_init` (metadata) and `0002_auth` (`users`, `roles`, `user_roles`,
 `sessions`, plus a reusable `set_updated_at()` trigger and the `citext` extension for
 case-insensitive emails). The data model is diagrammed in
-[`docs/high_level_design.md`](docs/high_level_design.md#5-data-model).
+[`docs/high_level_design.md`](docs/high_level_design.md#6-data-model).
 
 ## Testing
 
@@ -220,6 +241,7 @@ binary, data-driven rows via `_data()` slots:
 | `modulo_server_auth_roles_tests` | unit | role ids/names match the schema catalogue |
 | `modulo_integration_tests` | integration | real `QHttpServer` on an OS-assigned port + real HTTP client: `/api/v1/health` body and version, 404 error envelope |
 | `modulo_auth_repositories_tests` | integration | connection pool (lazy open, reuse) and user/session repositories against `modulo_test`: case-insensitive lookup, `auth.email_taken`, session create/find/touch/revoke, expiry, revoke-all |
+| `modulo_auth_flow_tests` | integration | the auth endpoints over real HTTP: register → login → me → logout → 401; missing/bogus tokens; identical 401 for wrong password and unknown email; 409 duplicate, 400 bad input; second account is a plain user |
 | `modulo_client_qml_tests` | ui | `QUICK_TEST_MAIN` runner over `client/tests/qml/tst_*.qml` (Qt Quick + Material smoke) |
 
 Conventions: every module's tests live in its own `tests/` directory (auto-discovered by
@@ -268,14 +290,14 @@ db/migrations/    append-only SQL schema migrations (NNNN_name.sql)
 docs/             high_level_design.md (Mermaid architecture diagrams)
 docker/           docker-compose.yml (Postgres 16 on :5433) + one-time initdb scripts
 libs/core/        modulo_core — foundations: version(), Result<T>, shared password policy
-libs/api/         modulo_api — Q_GADGET DTOs + validating QJson mappings shared by server and client
+libs/api/         modulo_api — Q_GADGET DTOs (health, error, auth) + validating QJson mappings shared by server and client
 scripts/          db-up.sh, db-down.sh, migrate.sh, format.sh
 tests/support/    shared test fixtures (<modulo/testing/...>) for integration tests
 server/           backend: per-module static libraries + executables (each module has its own tests/)
   modules/config/ modulo_server_config — env-based process configuration
   modules/db/     modulo_server_db — migration engine + libpqxx connection pool (Qt-free)
-  modules/auth/   modulo_server_auth — Argon2id hashing, session tokens, user/session repositories
-  modules/http/   modulo_server_http — QHttpServer wrapper, routes, error envelope
+  modules/auth/   modulo_server_auth — Argon2id hashing, session tokens, repositories, AuthService
+  modules/http/   modulo_server_http — QHttpServer wrapper, auth guards, routes, error envelope, security headers
   app/            modulo_server — REST API server executable
   migrate/        modulo_migrate — CLI migration runner
 client/           modulo_client — QML desktop app (ApiClient + dark-theme shell)
@@ -316,6 +338,7 @@ CMakePresets.json configure/build/test presets (dev, dev-asan, dev-tidy, release
 | 1.8 — Public-repo readiness | MIT `LICENSE`; GitHub Actions CI (macOS runner: brew deps, `ci` preset, `-Werror` build, format check, unit + ui tests); README badges + License section; repository made public and tagged `v0.1.0` |
 | 2.1 — Auth schema | `0002_auth.sql`: `users` (citext email, Argon2id hash, disabled_at), `roles` (admin/user), `user_roles`, `sessions` (SHA-256 token digest, sliding expiry, revocation, partial index); `set_updated_at()` trigger; ER diagram in the HLD |
 | 2.2 — Auth crypto & data layer | `modulo_server_auth` module: Argon2id `PasswordHasher` (libsodium), opaque `token::generate`/`digest`, `Role` catalogue, `UserRepository` + `SessionRepository` (Result-returning, never throw); libpqxx `ConnectionPool` in `modules/db`; shared `core::validatePassword`; 5 new test binaries |
+| 2.3 — Auth service, routes & guards | `AuthService` (register/login/logout/authenticate, first account = admin, sliding expiry, uniform-timing login), `authed()`/`requireRole()` guards, `/api/v1/auth/*` endpoints, auth DTOs, central error-code → status mapping, security headers, `QLoggingCategory` logging, `MODULO_ALLOW_REGISTRATION`; `modulo_auth_flow_tests` over real HTTP |
 
 ## License
 

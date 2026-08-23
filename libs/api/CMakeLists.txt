@@ -3,5 +3,5 @@
 
 modulo_add_library(
     modulo_api
-    SOURCES src/error.cpp src/health.cpp src/json.cpp
+    SOURCES src/auth.cpp src/error.cpp src/health.cpp src/json.cpp
     PUBLIC_DEPS modulo_core Qt6::Core)
