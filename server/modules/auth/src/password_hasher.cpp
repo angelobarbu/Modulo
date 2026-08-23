@@ -4,6 +4,7 @@
 
 #include <sodium.h>
 
+#include <algorithm>
 #include <array>
 
 namespace modulo::server::auth {

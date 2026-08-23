@@ -2,6 +2,8 @@
 
 #include <modulo/server/auth/session_repository.h>
 
+#include <QUuid>
+
 namespace modulo::server::auth {
 
 namespace {
@@ -21,12 +23,25 @@ SessionRecord toRecord(const pqxx::row& row) {
     return record;
 }
 
-core::VoidResult requireOneRow(const pqxx::result& result) {
-    if (result.affected_rows() == 0) {
-        return core::makeError(QStringLiteral("auth.session_not_found"),
-                               QStringLiteral("session does not exist or is already revoked"));
+core::VoidResult sessionNotFound() {
+    return core::makeError(QStringLiteral("auth.session_not_found"),
+                           QStringLiteral("session does not exist or is already revoked"));
+}
+
+/// Maps an UPDATE's affected-row count to the repository contract: zero rows
+/// means the session does not exist or is already revoked.
+core::VoidResult requireAffected(const core::Result<long long>& affected) {
+    if (!affected) {
+        return std::unexpected{affected.error()};
+    }
+    if (*affected == 0) {
+        return sessionNotFound();
     }
     return {};
+}
+
+bool isUuid(const QString& id) {
+    return !QUuid::fromString(id).isNull();
 }
 
 } // namespace
@@ -60,30 +75,34 @@ core::Result<std::optional<SessionRecord>> SessionRepository::findActiveByDigest
 }
 
 core::VoidResult SessionRepository::touch(const QString& sessionId, const QDateTime& newExpiresAt) {
-    auto result = pg::withTransaction(pool_, [&](pqxx::work& tx) {
-        return requireOneRow(tx.exec("UPDATE sessions SET last_seen_at = now(), expires_at = $2::timestamptz "
-                                     "WHERE id = $1::uuid AND revoked_at IS NULL",
-                                     pqxx::params{pg::toStd(sessionId), pg::toIso(newExpiresAt)}));
-    });
-    if (!result) {
-        return std::unexpected{result.error()};
+    if (!isUuid(sessionId)) {
+        return sessionNotFound();
     }
-    return *result;
+    return requireAffected(pg::withTransaction(pool_, [&](pqxx::work& tx) -> long long {
+        return tx
+            .exec("UPDATE sessions SET last_seen_at = now(), expires_at = $2::timestamptz "
+                  "WHERE id = $1::uuid AND revoked_at IS NULL",
+                  pqxx::params{pg::toStd(sessionId), pg::toIso(newExpiresAt)})
+            .affected_rows();
+    }));
 }
 
 core::VoidResult SessionRepository::revoke(const QString& sessionId) {
-    auto result = pg::withTransaction(pool_, [&](pqxx::work& tx) {
-        return requireOneRow(
-            tx.exec("UPDATE sessions SET revoked_at = now() WHERE id = $1::uuid AND revoked_at IS NULL",
-                    pqxx::params{pg::toStd(sessionId)}));
-    });
-    if (!result) {
-        return std::unexpected{result.error()};
+    if (!isUuid(sessionId)) {
+        return sessionNotFound();
     }
-    return *result;
+    return requireAffected(pg::withTransaction(pool_, [&](pqxx::work& tx) -> long long {
+        return tx
+            .exec("UPDATE sessions SET revoked_at = now() WHERE id = $1::uuid AND revoked_at IS NULL",
+                  pqxx::params{pg::toStd(sessionId)})
+            .affected_rows();
+    }));
 }
 
 core::Result<qint64> SessionRepository::revokeAllForUser(const QString& userId) {
+    if (!isUuid(userId)) {
+        return qint64{0};
+    }
     return pg::withTransaction(pool_, [&](pqxx::work& tx) {
         return static_cast<qint64>(
             tx.exec("UPDATE sessions SET revoked_at = now() WHERE user_id = $1::uuid AND revoked_at IS NULL",

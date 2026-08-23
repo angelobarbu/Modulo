@@ -95,6 +95,31 @@ private slots:
         QCOMPARE(*count, qint64{1}); // the failed insert was rolled back
     }
 
+    void duplicateRolesAreAssignedOnce() {
+        MODULO_REQUIRE_TEST_DATABASE();
+        auth::UserRepository users{*pool_};
+
+        const auto created = users.create(QStringLiteral("r@example.com"), QStringLiteral("R"), QStringLiteral("h"),
+                                          {auth::Role::User, auth::Role::User});
+        QVERIFY2(created.has_value(), qPrintable(created ? QString{} : created.error().message));
+        QCOMPARE(created->roles, (QList<auth::Role>{auth::Role::User}));
+    }
+
+    void malformedIdsAreNotFoundNotErrors() {
+        MODULO_REQUIRE_TEST_DATABASE();
+        auth::UserRepository users{*pool_};
+        auth::SessionRepository sessions{*pool_};
+
+        const auto user = users.findById(QStringLiteral("not-a-uuid"));
+        QVERIFY(user.has_value() && !user->has_value());
+        QCOMPARE(sessions.revoke(QStringLiteral("not-a-uuid")).error().code, QStringLiteral("auth.session_not_found"));
+        QCOMPARE(sessions.touch(QStringLiteral("not-a-uuid"), QDateTime::currentDateTimeUtc()).error().code,
+                 QStringLiteral("auth.session_not_found"));
+        const auto revoked = sessions.revokeAllForUser(QStringLiteral("not-a-uuid"));
+        QVERIFY(revoked.has_value());
+        QCOMPARE(*revoked, qint64{0});
+    }
+
     void missingUsersAreNulloptNotErrors() {
         MODULO_REQUIRE_TEST_DATABASE();
         auth::UserRepository users{*pool_};

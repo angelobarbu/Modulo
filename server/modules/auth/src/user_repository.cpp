@@ -2,6 +2,8 @@
 
 #include <modulo/server/auth/user_repository.h>
 
+#include <QUuid>
+
 namespace modulo::server::auth {
 
 namespace {
@@ -54,8 +56,10 @@ core::Result<UserRecord> UserRepository::create(const QString& email, const QStr
                                  pqxx::params{pg::toStd(email), pg::toStd(displayName), pg::toStd(passwordHash)})
                              .one_row();
         const std::string userId = row[0].as<std::string>();
+        // Idempotent: a repeated role is not an error, so the only unique
+        // violation this transaction can raise is the email one.
         for (const Role role : roles) {
-            tx.exec("INSERT INTO user_roles (user_id, role_id) VALUES ($1::uuid, $2)",
+            tx.exec("INSERT INTO user_roles (user_id, role_id) VALUES ($1::uuid, $2) ON CONFLICT DO NOTHING",
                     pqxx::params{userId, static_cast<qint16>(role)});
         }
         return toRecord(tx, row);
@@ -74,6 +78,11 @@ core::Result<std::optional<UserRecord>> UserRepository::findByEmail(const QStrin
 }
 
 core::Result<std::optional<UserRecord>> UserRepository::findById(const QString& id) {
+    // A malformed id can never match a row; reject it here instead of letting
+    // the $1::uuid cast fail inside PostgreSQL and surface as db.query_failed.
+    if (QUuid::fromString(id).isNull()) {
+        return std::optional<UserRecord>{};
+    }
     return pg::withTransaction(
         pool_, [&](pqxx::work& tx) { return findOne(tx, "id = $1::uuid", pqxx::params{pg::toStd(id)}); });
 }
