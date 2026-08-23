@@ -4,6 +4,7 @@
 
 #include <QJsonObject>
 #include <QString>
+#include <QStringList>
 
 namespace modulo::api::json {
 
@@ -16,5 +17,8 @@ namespace modulo::api::json {
 core::Result<QString> requireString(const QJsonObject& object, QLatin1StringView key);
 
 core::Result<QJsonObject> requireObject(const QJsonObject& object, QLatin1StringView key);
+
+/// A JSON array whose elements must all be strings.
+core::Result<QStringList> requireStringList(const QJsonObject& object, QLatin1StringView key);
 
 } // namespace modulo::api::json

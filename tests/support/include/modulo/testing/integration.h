@@ -14,6 +14,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QByteArray>
 #include <QString>
 #include <QTest>
 #include <QTimer>
@@ -38,11 +39,20 @@ struct HttpResponse {
     QByteArray body;
 };
 
-/// Blocking HTTP GET against an in-process server, with a timeout so a dead
-/// server fails the test instead of hanging it.
-inline HttpResponse httpGet(const QUrl& url, int timeoutMs = 5000) {
+/// Blocking HTTP request against an in-process server, with a timeout so a
+/// dead server fails the test instead of hanging it. `body` is sent as JSON;
+/// `bearer`, when non-empty, becomes the Authorization header.
+inline HttpResponse httpRequest(const QByteArray& method, const QUrl& url, const QByteArray& body = {},
+                                const QString& bearer = {}, int timeoutMs = 5000) {
     QNetworkAccessManager network;
-    QNetworkReply* reply = network.get(QNetworkRequest{url});
+    QNetworkRequest request{url};
+    if (!body.isEmpty()) {
+        request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    }
+    if (!bearer.isEmpty()) {
+        request.setRawHeader("Authorization", "Bearer " + bearer.toLatin1());
+    }
+    QNetworkReply* reply = network.sendCustomRequest(request, method, body);
 
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
@@ -54,6 +64,10 @@ inline HttpResponse httpGet(const QUrl& url, int timeoutMs = 5000) {
     response.body = reply->readAll();
     reply->deleteLater();
     return response;
+}
+
+inline HttpResponse httpGet(const QUrl& url, const QString& bearer = {}, int timeoutMs = 5000) {
+    return httpRequest("GET", url, {}, bearer, timeoutMs);
 }
 
 } // namespace modulo::testing

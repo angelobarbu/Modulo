@@ -13,3 +13,9 @@ modulo_add_test(
     LABEL integration
     SOURCES test_auth_repositories.cpp
     DEPS modulo_server_auth Qt6::Network)
+
+modulo_add_test(
+    modulo_auth_flow_tests
+    LABEL integration
+    SOURCES test_auth_flow.cpp
+    DEPS modulo_server_http Qt6::Network)

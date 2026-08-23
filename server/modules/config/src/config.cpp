@@ -28,6 +28,19 @@ core::Result<Config> Config::fromEnvironment() {
     }
     config.httpPort = port;
 
+    const QString registration = envOr("MODULO_ALLOW_REGISTRATION", QStringLiteral("true")).toLower();
+    if (registration == QLatin1StringView{"true"} || registration == QLatin1StringView{"1"} ||
+        registration == QLatin1StringView{"yes"}) {
+        config.allowRegistration = true;
+    } else if (registration == QLatin1StringView{"false"} || registration == QLatin1StringView{"0"} ||
+               registration == QLatin1StringView{"no"}) {
+        config.allowRegistration = false;
+    } else {
+        return core::makeError(QStringLiteral("config.invalid_bool"),
+                               QStringLiteral("MODULO_ALLOW_REGISTRATION must be true/false (or 1/0, yes/no), got '%1'")
+                                   .arg(registration));
+    }
+
     return config;
 }
 

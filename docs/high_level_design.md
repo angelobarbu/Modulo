@@ -17,12 +17,19 @@ QML_ELEMENT"]
 
         subgraph serverproc["modulo_server (C++23 / QCoreApplication)"]
             http["http module
-QHttpServer · routes
-JSON error envelope"]
+QHttpServer · routes · guards
+error envelope · security headers"]
+            authsvc["auth module
+AuthService · repositories
+Argon2id · tokens"]
             config["config module
 env → Config
 (MODULO_* vars)"]
+            pool["db module
+ConnectionPool"]
             http --> config
+            http --> authsvc
+            authsvc --> pool
         end
 
         subgraph migrate["modulo_migrate (CLI, Qt-free)"]
@@ -43,11 +50,11 @@ volume: modulo_pgdata")]
 NNNN_name.sql
 (append-only)"]
 
-    apiclient -- "HTTP GET /api/v1/health
+    apiclient -- "HTTP /api/v1/health, /api/v1/auth/*
 127.0.0.1:8080 (loopback only)" --> http
     migrator -- "SQL over libpq" --> pg
     sql --> migrator
-    http -. "libpqxx pool — Increment 2" .-> pg
+    pool -- "libpqxx" --> pg
 ```
 
 ## 2. Static library dependency graph
@@ -62,11 +69,14 @@ Q_GADGET DTOs
 Health / Error
 api::json::require*"]
     cfg["modulo_server_config"]
-    httpm["modulo_server_http"]
+    httpm["modulo_server_http
+Server · guards · routes
+responses · lcHttp"]
     dbm["modulo_server_db
 (Qt-free · libpqxx)
 Migrator · ConnectionPool"]
     authm["modulo_server_auth
+AuthService · lcAuth
 PasswordHasher (Argon2id)
 token · Role
 UserRepository · SessionRepository"]
@@ -81,6 +91,7 @@ UserRepository · SessionRepository"]
     authm --> dbm
     httpm --> api
     httpm --> cfg
+    httpm --> authm
     server --> httpm
     migrateexe --> dbm
     clientexe --> api
@@ -120,7 +131,37 @@ sequenceDiagram
     Note over Q: green pulsing dot · "server ok (v0.1.0)"
 ```
 
-## 4. Runtime flow — migrations
+## 4. Runtime flow — login and an authenticated request
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant R as auth routes (http)
+    participant G as authed() guard
+    participant A as AuthService
+    participant P as PostgreSQL
+
+    C->>R: POST /api/v1/auth/login {email, password}
+    R->>A: login(email, password)
+    A->>P: users by email (citext)
+    A->>A: Argon2id verify (dummy hash if unknown, same timing)
+    A->>A: token::generate (32 CSPRNG bytes, base64url)
+    A->>P: INSERT sessions (sha256 digest, expires_at = now + 30 d)
+    A-->>R: LoginResult {token, user}
+    R-->>C: 200 {token, user} + security headers
+
+    C->>G: GET /api/v1/auth/me, Authorization: Bearer token
+    G->>A: authenticate(token)
+    A->>P: sessions by digest (not revoked, not expired)
+    A->>P: user by id (not disabled) + roles
+    A->>P: touch session (sliding expiry, throttled)
+    A-->>G: AuthContext {userId, sessionId, roles}
+    G->>R: handler(context, request)
+    R-->>C: 200 UserDto
+    Note over G: no or bad token gives 401 auth.unauthenticated, missing role gives 403 auth.forbidden
+```
+
+## 5. Runtime flow — migrations
 
 ```mermaid
 sequenceDiagram
@@ -146,7 +187,7 @@ sequenceDiagram
     M-->>U: "N applied, M skipped" (exit code)
 ```
 
-## 5. Data model
+## 6. Data model
 
 ```mermaid
 erDiagram
@@ -198,7 +239,7 @@ Migrations so far: `0001_init` (meta), `0002_auth` (users, roles, user_roles, se
 (`modules/db`, `migrator.cpp`) creates it on first run and owns it. Tokens are never stored: the server keeps only the SHA-256 digest, so a database leak cannot
 be replayed as a login.
 
-## 6. Test architecture
+## 7. Test architecture
 
 ```mermaid
 flowchart LR
@@ -219,6 +260,8 @@ in-process QHttpServer on port 0
         t7["modulo_auth_repositories_tests
 ConnectionPool + repositories
 against modulo_test"]
+        t8["modulo_auth_flow_tests
+auth endpoints over real HTTP"]
     end
     subgraph ui["label: ui — Qt Quick Test, offscreen"]
         t5["modulo_client_qml_tests
@@ -227,6 +270,7 @@ tst_*.qml via QUICK_TEST_MAIN"]
 
     env["MODULO_TEST_DB_URL"] -. "unset → QSKIP → CTest Skipped" .-> t4
     env -.-> t7
+    env -.-> t8
     support["tests/support/include/modulo/testing/
 integration.h: MODULO_REQUIRE_TEST_DATABASE(), httpGet()"] --> t4
 
