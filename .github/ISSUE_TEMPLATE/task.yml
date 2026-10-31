@@ -1,0 +1,32 @@
+name: Task
+description: A step of an increment, or any other piece of work
+title: "Increment N - Step M: <what>"
+labels: ["feature"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What is true when this is closed?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What is in, and what is explicitly out.
+      value: |
+        - [ ] 
+  - type: textarea
+    id: done
+    attributes:
+      label: Definition of done
+      value: |
+        - [ ] Clean `-Werror` build, `scripts/format.sh --check`, `ctest --preset all`
+        - [ ] README implementation log + docs updated
+        - [ ] PR squash-merged into the increment branch
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Decisions, links, references.
