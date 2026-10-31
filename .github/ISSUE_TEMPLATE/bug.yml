@@ -1,0 +1,25 @@
+name: Bug
+description: Something is broken
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      value: |
+        1. 
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      placeholder: server / client / migrate / build / CI
